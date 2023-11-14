@@ -1,0 +1,5 @@
+#file from lab5
+- hosts: type_vkcs_compute_floatingip_associate #vk_cloud
+  roles:
+    - role: 'roles/docker-custom-role'
+  become: true
