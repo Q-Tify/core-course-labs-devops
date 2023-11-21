@@ -1,0 +1,108 @@
+name: Javascript CI
+
+on:
+  push:
+    paths:
+      - "app_javascript/**"
+      - ".github/workflows/javascript-ci.yml"
+  pull_request:
+    paths:
+      - "app_javascript/**"
+      - ".github/workflows/javascript-ci.yml"
+
+jobs:
+  javascript-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./app_javascript
+    
+    strategy:
+      matrix:
+        node-version: ["14", "16"]
+
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+          cache-dependency-path: app_javascript/package-lock.json
+
+      - name: Display Node.js version
+        run: node --version
+      
+      - name: Install Node.js dependencies
+        run: npm install
+
+      - name: Linting with ESLint
+        run: |
+          npm run lint
+          npx eslint --fix .
+        
+      - name: Testing JavaScript
+        run: npm run test
+
+  snyk-security:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    defaults:
+      run:
+        working-directory: ./app_javascript
+    
+    strategy:
+      matrix:
+        node-version: ["14", "16"]
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: snyk/actions/setup@master
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+          cache-dependency-path: ./app_javascript/package-lock.json
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Snyk to Check for Vulnerabilities
+        continue-on-error: true
+        run: snyk test --sarif-file-output=snyk.sarif
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Upload result to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: ./app_javascript/snyk.sarif
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: [javascript-build, snyk-security]
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Login to Docker
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Set Up Docker Build
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & Push to Docker
+        uses: docker/build-push-action@v3
+        with:
+          context: ./app_javascript
+          file: ./app_javascript/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/randomquote:latest
