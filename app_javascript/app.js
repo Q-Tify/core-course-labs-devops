@@ -1,12 +1,17 @@
 const express = require('express')
 const app = express()
 const path = require('path')
+const promClient = require('prom-client');
+const fs = require('fs');
 
 module.exports = {
+  app,
   getRandomQuote
 }
 
 app.use(express.static(path.join(__dirname, 'public')))
+
+let countVisits = 0;
 
 const quotes = [
   'Do the small stuff. A consistent little will earn you a lot.',
@@ -41,15 +46,51 @@ const quotes = [
   "Every day may not be good, but there's something good in every day."
 ]
 
+const register = new promClient.Registry();
+
+const httpRequestCounter = new promClient.Counter({
+  name: 'http_requests_total',
+  help: 'Total HTTP requests',
+  labelNames: ['method', 'route'],
+  registers: [register],
+});
+
+promClient.collectDefaultMetrics({ register });
+
+
 function getRandomQuote () {
   const randomIndex = Math.floor(Math.random() * quotes.length)
   return quotes[randomIndex]
 }
 
+app.get('/metrics', (req, res) => {
+  register.metrics()
+    .then(metricsData => {
+      res.set('Content-Type', register.contentType);
+      res.send(metricsData);
+    })
+    .catch(error => {
+      console.error(error);
+      res.status(500).send('Internal Server Error');
+    });
+});
+
 app.get('/get-quote', (req, res) => {
+  httpRequestCounter.inc({ method: 'GET', route: '/get-quote' });
   const randomQuote = getRandomQuote()
+  countVisits = countVisits + 1;
+  
+  fs.writeFile("./volume/visits", countVisits.toString(), (err) => {
+  });
+
   res.json({ quote: randomQuote })
 })
+
+app.get('/visits', (req, res) => {
+  res.json(countVisits)
+})
+
+
 
 const port = process.env.PORT || 3000
 const server = app.listen(port, () => {

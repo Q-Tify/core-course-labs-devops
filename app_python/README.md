@@ -1,3 +1,5 @@
+[![Python CI](https://github.com/Q-Tify/core-course-labs-devops/actions/workflows/python-ci.yml/badge.svg?branch=lab3&event=push)](https://github.com/Q-Tify/core-course-labs-devops/actions/workflows/python-ci.yml)
+
 # Python Web Application Project: Moscow Time Display
 
 ## Description
@@ -12,6 +14,7 @@ This project aims to develop a Python web application that displays the current 
   - [Installation](#installation)
   - [Usage](#usage)
   - [Features](#features)
+  - [Endpoints](#endpoints)
   - [Technologies Used](#technologies-used)
   - [Project Structure](#project-structure)
   - [License](#license)
@@ -60,6 +63,14 @@ Upon accessing the application in your web browser, you will see the current dat
 - User-friendly web interface.
 - Responsive design for various devices.
 - Easy-to-understand and clean user interface.
+
+## Endpoints
+- Endpoint: /metrics
+- Purpose: Exposes metrics for monitoring using Prometheus.
+- Endpoint: /
+- Purpose: Returns the current time in Moscow and increments the request count.
+- Endpoint: /visits
+- Purpose: Returns the total number of visits.
 
 ## Technologies Used
 - Python: The core programming language used for the backend development.
@@ -186,3 +197,49 @@ docker images
 ```
 docker system prune
 ```
+
+<br>
+
+# Unit Tests
+To run the tests for this application you can use precommit, with linting the app will be tested:
+```
+pre-commit install
+pre-commit run --all-files
+```
+Or you can run test separately with command:
+```
+flask test
+```
+
+<br>
+
+# CI Workflow
+
+### Overview
+
+This project utilizes GitHub Actions for Continuous Integration (CI) to automate various tasks such as code linting, testing, vulnerability scanning, and Docker image building. The CI workflow ensures code quality, security, and smooth deployments.
+
+### Workflow Details
+
+The CI workflow is defined in the [.github/workflows/python-ci.yml](.github/workflows/python-ci.yml) file. It is triggered automatically on every push or pull to the `app_python` directory or changes to the workflow file itself.
+
+Here's what the workflow does:
+
+1. **Python Build Job**:
+   - Runs on Ubuntu-Latest.
+   - Sets up Python 3.10.
+   - Installs project dependencies from `requirements.txt`.
+   - Performs code linting using Flake8 and Black.
+   - Executes Python unit tests with pytest.
+
+2. **Snyk Security Scan**:
+   - Ensures security by checking for vulnerabilities in your project's dependencies.
+   - Uses Snyk to perform security scans on your Python codebase.
+   - The results are uploaded to GitHub Code Scanning for review.
+
+3. **Docker Build & Push Job**:
+   - Runs on Ubuntu-Latest and depends on the Python Build and Snyk Security Scan jobs.
+   - Logs in to Docker Hub using Docker secrets.
+   - Sets up Docker Buildx for efficient multi-platform image building.
+   - Builds and pushes a Docker image based on the `Dockerfile` in the `app_python` directory.
+
