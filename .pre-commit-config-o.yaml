@@ -18,3 +18,4 @@ repos:
             language: system
             pass_filenames: false
             exclude: ^env/
+#Should add tests for javascript
